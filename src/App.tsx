@@ -3,13 +3,6 @@ import { Subject, Student, LogEntry, Grade } from './types';
 import { Button } from './components/Button';
 import { LogWizard } from './components/LogWizard';
 import { StudentSummary } from './components/StudentSummary';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-
-const SUBJECT_COLORS: Record<Subject, string> = {
-  [Subject.MATH]: 'bg-blue-100 text-blue-700 border-blue-200',
-  [Subject.ENGLISH]: 'bg-purple-100 text-purple-700 border-purple-200',
-  [Subject.TASK_COMPLETION]: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-};
 
 const App: React.FC = () => {
   const [students, setStudents] = useState<Student[]>(() => {
@@ -21,8 +14,29 @@ const App: React.FC = () => {
   const [syncUrl, setSyncUrl] = useState<string>(() => localStorage.getItem('iep_sync_url') || '');
   const [showWizard, setShowWizard] = useState(false);
   const [activeGrade, setActiveGrade] = useState<Grade>('6th');
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // --- HANDLERS ---
+  // Triggered when you click the new "Connect" button
+  const handleConnectSync = async () => {
+    if (!syncUrl.includes('sheetdb.io')) {
+      alert("Please enter a valid SheetDB API URL");
+      return;
+    }
+    setIsSyncing(true);
+    try {
+      const response = await fetch(syncUrl);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setLogs(data);
+        alert("Connected! Team logs have been pulled from the cloud.");
+      }
+    } catch (e) {
+      alert("Could not connect. Check your URL.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleAddStudent = () => {
     const name = prompt("Enter Student Name:");
     if (!name) return;
@@ -31,75 +45,95 @@ const App: React.FC = () => {
       name,
       grade: activeGrade
     };
-    setStudents([...students, newStudent]);
+    setStudents(prev => [...prev, newStudent]);
   };
 
-  const handleSaveLogs = (newLogs: Omit<LogEntry, 'id' | 'timestamp'>[]) => {
+  const handleSaveLogs = async (newLogs: Omit<LogEntry, 'id' | 'timestamp'>[]) => {
     const formatted: LogEntry[] = newLogs.map(l => ({
       ...l,
       id: Math.random().toString(36).substr(2, 9),
       timestamp: Date.now()
     }));
-    setLogs([...formatted, ...logs]);
+    
+    const updatedLogs = [...formatted, ...logs];
+    setLogs(updatedLogs);
     setShowWizard(false);
+
+    // If sync is set up, send to Google Sheets
+    if (syncUrl) {
+      await fetch(syncUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(formatted)
+      });
+    }
   };
 
-  // --- PERSISTENCE ---
   useEffect(() => { localStorage.setItem('iep_students', JSON.stringify(students)); }, [students]);
   useEffect(() => { localStorage.setItem('iep_logs', JSON.stringify(logs)); }, [logs]);
   useEffect(() => { localStorage.setItem('iep_sync_url', syncUrl); }, [syncUrl]);
 
-  const filteredLogs = logs.filter(l => students.find(s => s.id === l.studentId)?.grade === activeGrade);
-
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-      <header className="max-w-7xl mx-auto flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-black text-indigo-600 tracking-tighter">IEP MINUTE PRO</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleAddStudent}>+ Add Student</Button>
-          <Button onClick={() => setShowWizard(true)} disabled={students.length === 0}>Log Session</Button>
+    <div className="min-h-screen bg-slate-100 p-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* TOP BAR */}
+        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div>
+            <h1 className="text-xl font-black text-slate-800">IEP TEAM TRACKER</h1>
+            <p className="text-slate-500 text-sm">Grade: {activeGrade}</p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={handleAddStudent}>+ Add Student</Button>
+            <Button onClick={() => setShowWizard(true)} disabled={students.length === 0}>Log Session</Button>
+          </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto space-y-8">
-        {/* Sync Settings */}
-        <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-400 uppercase mb-4">Cloud Sync URL</h3>
-          <input 
-            className="w-full p-3 bg-slate-100 rounded-xl outline-none border-2 border-transparent focus:border-indigo-500"
-            placeholder="Paste SheetDB URL here..."
-            value={syncUrl}
-            onChange={(e) => setSyncUrl(e.target.value)}
-          />
-        </section>
+        {/* SYNC SETUP */}
+        <div className="bg-indigo-600 p-8 rounded-3xl shadow-xl text-white">
+          <h2 className="text-lg font-bold mb-4">Step 1: Connect to Team Google Sheet</h2>
+          <div className="flex gap-2">
+            <input 
+              className="flex-1 p-4 rounded-xl text-slate-900 outline-none"
+              placeholder="Paste SheetDB API URL here..."
+              value={syncUrl}
+              onChange={(e) => setSyncUrl(e.target.value)}
+            />
+            <Button variant="primary" className="bg-white text-indigo-600 hover:bg-indigo-50" onClick={handleConnectSync}>
+              {isSyncing ? 'Connecting...' : 'Connect & Sync'}
+            </Button>
+          </div>
+        </div>
 
-        {/* Grade Switcher */}
-        <div className="flex bg-slate-200 p-1 rounded-xl w-fit">
-          {(['6th', '7th', '8th'] as Grade[]).map((g) => (
-            <button key={g} onClick={() => setActiveGrade(g)} className={`px-6 py-2 rounded-lg font-bold text-sm ${activeGrade === g ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600'}`}>{g}</button>
+        {/* GRADE PICKER */}
+        <div className="flex gap-2 justify-center">
+          {(['6th', '7th', '8th'] as Grade[]).map(g => (
+            <button key={g} onClick={() => setActiveGrade(g)} className={`px-8 py-3 rounded-2xl font-black transition-all ${activeGrade === g ? 'bg-slate-800 text-white' : 'bg-white text-slate-400'}`}>
+              {g} Grade
+            </button>
           ))}
         </div>
 
-        {/* Students Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* STUDENT LIST */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {students.filter(s => s.grade === activeGrade).map(student => (
             <StudentSummary key={student.id} student={student} logs={logs.filter(l => l.studentId === student.id)} />
           ))}
           {students.filter(s => s.grade === activeGrade).length === 0 && (
-            <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-300 rounded-3xl text-slate-400 font-bold">
-              No students added for {activeGrade} grade yet.
+            <div className="col-span-full bg-white/50 border-2 border-dashed border-slate-300 rounded-3xl p-12 text-center text-slate-400 font-bold">
+              No students added to {activeGrade} grade yet. Click "+ Add Student" above.
             </div>
           )}
         </div>
+      </div>
 
-        {showWizard && (
-          <LogWizard 
-            students={students.filter(s => s.grade === activeGrade)} 
-            onSave={handleSaveLogs} 
-            onCancel={() => setShowWizard(false)} 
-          />
-        )}
-      </main>
+      {showWizard && (
+        <LogWizard 
+          students={students.filter(s => s.grade === activeGrade)} 
+          onSave={handleSaveLogs} 
+          onCancel={() => setShowWizard(false)} 
+        />
+      )}
     </div>
   );
 };
