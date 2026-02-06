@@ -1,53 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Subject, Student, LogEntry, Grade } from './types';
+import { Button } from './components/Button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-// --- 1. TYPES & CONSTANTS ---
-export enum Subject {
-  MATH = 'Math',
-  ENGLISH = 'English',
-  TASK_COMPLETION = 'Task Completion'
-}
-
-export type Grade = '6th' | '7th' | '8th';
-
-export interface Student {
-  id: string;
-  name: string;
-  grade: Grade;
-}
-
-export interface LogEntry {
-  id: string;
-  studentId: string;
-  subject: Subject;
-  minutes: number;
-  date: string;
-  staffName: string;
-  notes?: string;
-  timestamp: number;
-}
-
-export const SUBJECT_COLORS: Record<Subject, string> = {
+// Constants used for styling the subject badges
+const SUBJECT_COLORS: Record<Subject, string> = {
   [Subject.MATH]: 'bg-blue-100 text-blue-700 border-blue-200',
   [Subject.ENGLISH]: 'bg-purple-100 text-purple-700 border-purple-200',
   [Subject.TASK_COMPLETION]: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
-const INITIAL_STUDENTS: Student[] = [];
-
-// --- 2. SIMPLE UI COMPONENTS ---
-const Button = ({ children, variant = 'primary', size = 'md', ...props }: any) => {
-  const base = "font-bold rounded-xl transition-all flex items-center justify-center ";
-  const variants: any = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md",
-    outline: "bg-white text-slate-600 border border-slate-200 hover:border-slate-300",
-    ghost: "text-slate-600 hover:bg-slate-100"
-  };
-  const sizes: any = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm", lg: "px-6 py-3" };
-  return <button className={base + variants[variant] + " " + sizes[size] + " " + props.className} {...props}>{children}</button>;
-};
-
-// --- 3. THE MAIN APP COMPONENT ---
 const getWeekRange = (date: Date) => {
   const d = new Date(date);
   const day = d.getDay();
@@ -63,18 +25,20 @@ const getWeekRange = (date: Date) => {
 
 const App: React.FC = () => {
   const [students, setStudents] = useState<Student[]>(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('iep_students') : null;
-    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    const saved = localStorage.getItem('iep_students');
+    return saved ? JSON.parse(saved) : [];
   });
   
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [syncUrl, setSyncUrl] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('iep_sync_url') : '') || '');
+  const [syncUrl, setSyncUrl] = useState<string>(() => localStorage.getItem('iep_sync_url') || '');
   const [isLoading, setIsLoading] = useState(false);
   const [view, setView] = useState<'dashboard' | 'history'>('dashboard');
   const [activeGrade, setActiveGrade] = useState<Grade>('6th');
+
   const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toLocaleString('default', { month: 'long', year: 'numeric' }));
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
 
+  // Load from Cloud
   useEffect(() => {
     const fetchCloudData = async () => {
       if (!syncUrl) {
@@ -90,9 +54,7 @@ const App: React.FC = () => {
           setLogs(Array.isArray(data) ? data : []);
         }
       } catch (e) {
-        console.error("Cloud Fetch Failed:", e);
-        const saved = localStorage.getItem('iep_logs');
-        if (saved) setLogs(JSON.parse(saved));
+        console.error("Fetch Error:", e);
       } finally {
         setIsLoading(false);
       }
@@ -100,6 +62,7 @@ const App: React.FC = () => {
     fetchCloudData();
   }, [syncUrl]);
 
+  // Persist settings
   useEffect(() => { localStorage.setItem('iep_logs', JSON.stringify(logs)); }, [logs]);
   useEffect(() => { localStorage.setItem('iep_students', JSON.stringify(students)); }, [students]);
   useEffect(() => { localStorage.setItem('iep_sync_url', syncUrl); }, [syncUrl]);
@@ -120,54 +83,105 @@ const App: React.FC = () => {
     return totals;
   }, [filteredLogs]);
 
-  const chartData = Object.values(Subject).map(sub => ({ name: sub, minutes: subjectTotals[sub] }));
+  const chartData = Object.values(Subject).map(sub => ({
+    name: sub,
+    minutes: subjectTotals[sub]
+  }));
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-4">
-      <header className="max-w-7xl mx-auto flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm">
-        <h1 className="text-xl font-black text-indigo-600">IEP PRO TEAM</h1>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => setView('dashboard')}>Dashboard</Button>
-          <Button variant="ghost" onClick={() => setView('history')}>Logs</Button>
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-10">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">I</div>
+            <h1 className="text-xl font-black text-slate-800 tracking-tight">IEP MINUTE PRO</h1>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setView('dashboard')}>Dashboard</Button>
+            <Button variant="ghost" size="sm" onClick={() => setView('history')}>Logs</Button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto space-y-6">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-           <h2 className="text-2xl font-black mb-2">Team Metrics - {selectedMonth}</h2>
-           <p className="text-slate-500 mb-6">Setup your Sync URL in the browser console to share with team.</p>
-           
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              {Object.values(Subject).map(sub => (
-                <div key={sub} className={`p-4 rounded-2xl border ${SUBJECT_COLORS[sub]}`}>
-                  <div className="text-xs font-bold uppercase tracking-wider">{sub}</div>
-                  <div className="text-3xl font-black">{subjectTotals[sub]}m</div>
-                </div>
-              ))}
-           </div>
+      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Sync Settings Card */}
+        <section className="bg-indigo-900 text-white p-6 rounded-3xl shadow-xl shadow-indigo-200">
+          <h2 className="text-lg font-bold mb-2">Team Cloud Sync</h2>
+          <p className="text-indigo-200 text-sm mb-4">Paste your SheetDB API URL here to enable real-time team tracking.</p>
+          <input 
+            className="w-full p-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-indigo-300 outline-none focus:ring-2 focus:ring-white/50"
+            placeholder="https://sheetdb.io/api/v1/your-id"
+            value={syncUrl}
+            onChange={(e) => setSyncUrl(e.target.value)}
+          />
+        </section>
 
-           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="minutes" fill="#6366f1" radius={[10, 10, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-           </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-            <h3 className="font-bold mb-4">Sync Configuration</h3>
-            <input 
-              className="w-full p-3 bg-slate-100 rounded-xl border-none text-sm"
-              placeholder="Paste SheetDB or Sync URL here..."
-              value={syncUrl}
-              onChange={(e) => setSyncUrl(e.target.value)}
-            />
-        </div>
+        {/* Analytics Section */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-black text-slate-800 uppercase tracking-widest text-xs">Service Delivery Metrics</h3>
+              <span className="text-xs font-bold text-slate-400">{selectedMonth}</span>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 600}} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'}} />
+                  <Bar dataKey="minutes" radius={[6, 6, 0, 0]} barSize={50}>
+                    {chartData.map((_, i) => <Cell key={i} fill={['#6366f1', '#a855f7', '#10b981'][i % 3]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {Object.values(Subject).map(sub => (
+              <div key={sub} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{sub}</p>
+                  <p className="text-2xl font-black text-slate-800">{subjectTotals[sub]}m</p>
+                </div>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${SUBJECT_COLORS[sub]}`}>
+                  {sub[0]}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* History View */}
+        {view === 'history' && (
+          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+             <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Staff</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Subject</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Mins</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {logs.map(log => (
+                    <tr key={log.id} className="text-sm">
+                      <td className="px-6 py-4 text-slate-500">{log.date}</td>
+                      <td className="px-6 py-4 font-bold">{log.staffName}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold border ${SUBJECT_COLORS[log.subject]}`}>
+                          {log.subject}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-black">{log.minutes}m</td>
+                    </tr>
+                  ))}
+                </tbody>
+             </table>
+          </div>
+        )}
       </main>
     </div>
   );
