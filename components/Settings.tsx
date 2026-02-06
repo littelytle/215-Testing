@@ -1,6 +1,5 @@
-
 import React, { useRef } from 'react';
-import { Student, LogEntry } from './types';
+import { Student, LogEntry } from './types'; // Fixed: ./ instead of ../
 import { Button } from './Button';
 
 interface SettingsProps {
