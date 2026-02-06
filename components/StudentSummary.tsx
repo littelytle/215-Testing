@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
-import { Student, LogEntry, Subject } from './types';
+import { Student, LogEntry, Subject } from './types'; // Fixed: ./ instead of ../
 import { Button } from './Button';
-import { GET_STAFF_COLOR } from './constants';
+import { GET_STAFF_COLOR } from './constants'; // Fixed: ./ instead of ../
 
 interface StudentSummaryProps {
   student: Student;
