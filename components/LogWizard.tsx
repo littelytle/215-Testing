@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
-import { Subject, Student, LogEntry, Grade } from './types';
+import { Subject, Student, LogEntry, Grade } from './types'; // Fixed: ./ instead of ../
 import { Button } from './Button';
-import { SUBJECT_COLORS, STAFF_MEMBERS } from './constants';
+import { SUBJECT_COLORS, STAFF_MEMBERS } from './constants'; // Fixed: ./ instead of ../
 
 interface LogWizardProps {
   students: Student[];
