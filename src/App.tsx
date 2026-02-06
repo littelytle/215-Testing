@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Subject, Student, LogEntry, Grade } from './types';
 import { Button } from './components/Button';
+import { LogWizard } from './components/LogWizard'; // Ensure this is here
+import { StudentSummary } from './components/StudentSummary'; // Ensure this is here
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // Constants used for styling the subject badges
