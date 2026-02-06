@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+// FIXED: Changed '../' to './' because files are in the same folder
 import { Subject, Student, LogEntry, Grade } from './types';
 import { INITIAL_STUDENTS, SUBJECT_COLORS } from './constants';
 import { LogWizard } from './LogWizard';
@@ -52,11 +53,9 @@ const App: React.FC = () => {
       timestamp: Date.now()
     }));
 
-    // Update locally first for speed
     setLogs(prev => [...formattedLogs, ...prev]);
     setShowWizard(false);
 
-    // Sync to Google Sheets via SheetDB
     if (syncUrl.trim()) {
       try {
         await fetch(syncUrl, {
@@ -85,7 +84,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-4">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">I</div>
@@ -154,7 +153,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'history' && (
-           <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4">
+           <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
              <table className="w-full text-left border-collapse">
                <thead>
                  <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase text-slate-400 tracking-widest">
@@ -168,13 +167,13 @@ const App: React.FC = () => {
                <tbody className="divide-y divide-slate-50 font-bold text-sm">
                  {logs.map(l => (
                    <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
-                     <td className="px-6 py-4 text-slate-400 font-medium">{l.date}</td>
-                     <td className="px-6 py-4 text-indigo-600 font-black">{l.staffName}</td>
+                     <td className="px-6 py-4 text-slate-400">{l.date}</td>
+                     <td className="px-6 py-4 text-indigo-600">{l.staffName}</td>
                      <td className="px-6 py-4">{students.find(s => s.id === l.studentId)?.name || 'Former Student'}</td>
-                     <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-lg text-[10px] uppercase border ${SUBJECT_COLORS[l.subject]}`}>{l.subject}</span>
+                     <td className="px-6 py-4 uppercase text-[10px]">
+                        <span className={`px-2 py-1 rounded-lg border ${SUBJECT_COLORS[l.subject]}`}>{l.subject}</span>
                      </td>
-                     <td className="px-6 py-4 text-right font-black text-slate-900">{l.minutes}m</td>
+                     <td className="px-6 py-4 text-right font-black">{l.minutes}m</td>
                    </tr>
                  ))}
                </tbody>
@@ -210,7 +209,7 @@ const App: React.FC = () => {
 
       {!showWizard && view === 'dashboard' && (
         <div className="fixed bottom-8 right-8">
-          <Button onClick={() => setShowWizard(true)} className="h-16 px-10 rounded-full shadow-2xl shadow-indigo-200 text-lg font-black animate-bounce">Log Session</Button>
+          <Button onClick={() => setShowWizard(true)} className="h-16 px-10 rounded-full shadow-2xl shadow-indigo-200 text-lg font-black">Log Session</Button>
         </div>
       )}
     </div>
