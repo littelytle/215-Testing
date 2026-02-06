@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Student, LogEntry, Subject } from './types'; // Fixed: ./ instead of ../
+import { Student, LogEntry, Subject } from './types'; // Changed from ../
 import { Button } from './Button';
-import { GET_STAFF_COLOR } from './constants'; // Fixed: ./ instead of ../
-
+import { GET_STAFF_COLOR } from './constants'; // Changed from ../
 interface StudentSummaryProps {
   student: Student;
   logs: LogEntry[];
