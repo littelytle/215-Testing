@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Grade, Student, Subject } from './types';
+import { Grade, Student, Subject } from './types'; // Fixed: ./ instead of ../
 import { Button } from './Button';
 
 interface AddStudentModalProps {
